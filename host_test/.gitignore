@@ -1,0 +1,8 @@
+render.c
+maze.c
+game.c
+host_test_bin
+host_test_bin.dSYM/
+*.ppm
+*.png
+!expected_render.png

@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# ESP-IDF build output and local config (sdkconfig.defaults is the source of truth)
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+
+# Fetched by the IDF component manager from main/idf_component.yml
+managed_components/
