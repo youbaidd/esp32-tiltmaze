@@ -2,7 +2,7 @@
 
 A tilt-controlled marble maze for the [Waveshare ESP32-S3-Touch-AMOLED-1.8](https://www.waveshare.com/esp32-s3-touch-amoled-1.8.htm). Tilt the board to roll the ball through a randomly generated labyrinth to the gold goal. Solving one immediately generates the next.
 
-Built on the same raw ESP-IDF foundation as [FluidBox](../esp32-fluidbox): a band-based renderer that streams the AMOLED panel in horizontal strips over DMA, and the QMI8658 IMU read as a low-passed tilt vector.
+Built on the same raw ESP-IDF foundation as [FluidBox](https://github.com/V4C38/esp32-fluidbox), a fluid-simulation project for the same board: a band-based renderer that streams the AMOLED panel in horizontal strips over DMA, and the QMI8658 IMU read as a low-passed tilt vector.
 
 ## Controls
 
@@ -11,7 +11,7 @@ Built on the same raw ESP-IDF foundation as [FluidBox](../esp32-fluidbox): a ban
 
 ## How it works
 
-- **Maze** — a randomized depth-first backtracker carves a perfect (single-solution) maze over an 8x10 grid each time one is needed, then the grid is flattened into a list of wall line segments.
+- **Maze** — a randomized depth-first backtracker carves a perfect (single-solution) maze over a 7x9 grid each time one is needed, then the grid is flattened into a list of wall line segments. The grid is inset far enough from the panel's edges to clear its rounded corners (see `main/config.h`).
 - **Physics** — the ball is a point mass with tilt-driven acceleration, rolling friction, and a speed cap; wall collisions are plain circle-vs-segment tests against that same wall list, run at 120 Hz on core 1.
 - **Rendering** — core 0 redraws the maze, ball, and pulsing goal marker band by band, the same DMA-overlapped pipeline FluidBox uses, at roughly 90+ fps.
 
@@ -42,20 +42,23 @@ idf.py -p /dev/cu.usbmodem14801 flash monitor
 | `main/main.c` | Boot sequence and the two-task (physics/render) split |
 | `host_test/` | Host-native reproduction of the render pipeline, for checking drawing changes without flashing hardware - see its README |
 
-## Known issue: panel intermittently went black on real hardware
+## A bring-up gotcha worth knowing if you're porting this to another project
 
-While bringing this up, the maze+ball+goal render intermittently went full
-black on the actual board even though `host_test/` proves the exact same
-drawing code renders correctly and passes ASan/UBSan clean - so it wasn't a
-logic or memory-safety bug. No crash, no reboot, steady fps/step counters
-and healthy task-stack headroom throughout every failure. The QSPI clock
-was dropped from 80 MHz to 40 MHz in `main/display.c` as the most likely
-fix, since FluidBox's own code already flags 80 MHz over these
-GPIO-matrix-routed pins as marginal ("drop to 40 MHz if the panel ever
-shows tearing or corrupted pixels"). That change is unverified on-screen as
-of this writing - **check the panel and report back** whether the maze
-renders correctly now. If it's still wrong, the next things worth trying:
-run `host_test/build.sh` after any drawing change to keep ruling logic
-bugs out fast, and consider that PWR-button debounce timing, I2C traffic
-from the IMU/button poll, or something else contending for CPU/bus time
-right around a render call could be worth instrumenting next.
+The LCD reset, DSI power-enable, and touch-reset lines on this board are not
+ESP32 GPIOs - they're output pins on the TCA9554 IO expander at I2C address
+`0x20` (the same chip the PWR button lives on). That expander is a separate
+chip with its own power domain: reflashing or resetting the ESP32 does
+**not** reset it, so those lines just hold whatever level some earlier,
+unrelated firmware left them at. If they come up asserted, the panel is
+electrically held in reset and silently ignores every command sent to it -
+while the firmware driving it looks completely healthy (correct rendering,
+stable fps, no crashes), because from the ESP32's side nothing is wrong.
+
+`main/display.c`'s `reset_display_lines()`, called first thing in
+`display_init()`, pulses those lines low then releases them before anything
+else touches the panel or probes for the touch controller. The exact
+register layout and timing come from the board repo's own
+`examples/esp-idf/90_axp2101_pmu/components/board_variant/board_variant.c`
+(`release_touch_reset()`) - the one first-party example that actually
+drives this reset. If you're adapting this code (or FluidBox's, which has
+the same gap) into a new project on this board, don't drop this function.
