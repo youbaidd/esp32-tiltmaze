@@ -8,6 +8,7 @@ Built on the same raw ESP-IDF foundation as [FluidBox](https://github.com/V4C38/
 
 - **Tilt** the board: rolls the ball.
 - **PWR button**, short press: abandon the current maze and generate a new one.
+- **PWR button**, long press: return to the [launcher](https://github.com/youbaidd/esp32-launcher), if installed as one of its tiles.
 
 ## How it works
 
@@ -39,8 +40,13 @@ idf.py -p /dev/cu.usbmodem14801 flash monitor
 | `main/maze.c` | Maze generation and the wall-segment list |
 | `main/game.c` | Ball physics, collision, win detection, regenerate-on-solve |
 | `main/render.c` | Band-by-band drawing of walls, ball, and goal |
+| `main/slot_switch.c` | Returns to the launcher on a long PWR press - see [esp32-launcher](https://github.com/youbaidd/esp32-launcher) |
 | `main/main.c` | Boot sequence and the two-task (physics/render) split |
 | `host_test/` | Host-native reproduction of the render pipeline, for checking drawing changes without flashing hardware - see its README |
+
+## Multi-slot install
+
+This project can run standalone (the default `partitions_launcher.csv` still gives it a `factory` slot at the same offset a single-app table would), or as a tile in [esp32-launcher](https://github.com/youbaidd/esp32-launcher), flashed into one of the `ota_N` slots instead. See that repo's README for the full scheme.
 
 ## A bring-up gotcha worth knowing if you're porting this to another project
 

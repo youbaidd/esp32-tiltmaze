@@ -1,9 +1,13 @@
 CONFIG_IDF_TARGET="esp32s3"
 
-# 16 MB QIO flash, single large app partition (no OTA needed here).
+# 16 MB QIO flash. Custom table: this game lives in "factory" alongside a
+# launcher (also factory, on its own build) and up to 8 other games in
+# ota_0..ota_7 slots - see partitions_launcher.csv and the launcher project's
+# README for the multi-slot boot scheme.
 CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
-CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_launcher.csv"
 
 # Octal PSRAM, matching the board's fitted memory.
 CONFIG_SPIRAM=y

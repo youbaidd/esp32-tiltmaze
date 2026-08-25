@@ -19,6 +19,7 @@
 #include "game.h"
 #include "imu.h"
 #include "render.h"
+#include "slot_switch.h"
 
 #define I2C_PORT I2C_NUM_0
 #define I2C_SDA GPIO_NUM_15
@@ -96,9 +97,14 @@ static void physics_task(void *arg)
 
         if (now - last_button_us >= BUTTON_PERIOD_MS * 1000) {
             last_button_us = now;
+            button_poll();
             if (button_take_short_press()) {
                 ESP_LOGI(TAG, "PWR pressed, new maze");
                 game_force_reset();
+            }
+            if (button_take_long_press()) {
+                ESP_LOGI(TAG, "PWR long-press, returning to launcher");
+                slot_switch_boot_into(-1);
             }
         }
 
